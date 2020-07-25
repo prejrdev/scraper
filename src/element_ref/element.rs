@@ -6,6 +6,14 @@ use selectors::{Element, OpaqueElement};
 use super::ElementRef;
 use crate::selector::{NonTSPseudoClass, PseudoElement, Simple};
 
+fn map_b_to_cs(case_sensitive: bool) -> CaseSensitivity{
+    if case_sensitive{
+        CaseSensitivity::CaseSensitive
+    }else{
+        CaseSensitivity::AsciiCaseInsensitive
+    }
+}
+
 /// Note: will never match against non-tree-structure pseudo-classes.
 impl<'a> Element for ElementRef<'a> {
     type Impl = Simple;
@@ -109,15 +117,17 @@ impl<'a> Element for ElementRef<'a> {
         true
     }
 
-    fn has_id(&self, id: &LocalName, case_sensitivity: CaseSensitivity) -> bool {
+    fn has_id(&self, id: &LocalName, case_sensitive: bool) -> bool {               
+        let case_sensitivity = map_b_to_cs(case_sensitive);
         match self.value().id {
             Some(ref val) => case_sensitivity.eq(id.as_bytes(), val.as_bytes()),
             None => false,
         }
+        
     }
 
-    fn has_class(&self, name: &LocalName, case_sensitivity: CaseSensitivity) -> bool {
-        self.value().has_class(name, case_sensitivity)
+    fn has_class(&self, name: &LocalName, case_sensitive: bool) -> bool {
+        self.value().has_class(name, map_b_to_cs(case_sensitive))
     }
 
     fn is_empty(&self) -> bool {
@@ -152,7 +162,7 @@ mod tests {
             true,
             element.has_id(
                 &LocalName::from("link_id_456"),
-                CaseSensitivity::CaseSensitive
+                true
             )
         );
 
@@ -163,7 +173,7 @@ mod tests {
             false,
             element.has_id(
                 &LocalName::from("any_link_id"),
-                CaseSensitivity::CaseSensitive
+                true
             )
         );
     }
@@ -192,7 +202,7 @@ mod tests {
         let element = fragment.select(&sel).next().unwrap();
         assert_eq!(
             true,
-            element.has_class(&LocalName::from("my_class"), CaseSensitivity::CaseSensitive)
+            element.has_class(&LocalName::from("my_class"), true)
         );
 
         let html = "<p>hey there</p>";
@@ -201,7 +211,7 @@ mod tests {
         let element = fragment.select(&sel).next().unwrap();
         assert_eq!(
             false,
-            element.has_class(&LocalName::from("my_class"), CaseSensitivity::CaseSensitive)
+            element.has_class(&LocalName::from("my_class"), true)
         );
     }
 }
