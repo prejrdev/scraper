@@ -117,8 +117,8 @@ impl<'a> Element for ElementRef<'a> {
         true
     }
 
-    fn has_id(&self, id: &LocalName, case_sensitive: bool) -> bool {               
-        let case_sensitivity = map_b_to_cs(case_sensitive);
+    fn has_id(&self, id: &LocalName, case_sensitive: CaseSensitivity) -> bool {               
+        let case_sensitivity = case_sensitive;
         match self.value().id {
             Some(ref val) => case_sensitivity.eq(id.as_bytes(), val.as_bytes()),
             None => false,
@@ -126,8 +126,8 @@ impl<'a> Element for ElementRef<'a> {
         
     }
 
-    fn has_class(&self, name: &LocalName, case_sensitive: bool) -> bool {
-        self.value().has_class(name, map_b_to_cs(case_sensitive))
+    fn has_class(&self, name: &LocalName, case_sensitive: CaseSensitivity) -> bool {
+        self.value().has_class(name, case_sensitive)
     }
 
     fn is_empty(&self) -> bool {
@@ -141,6 +141,23 @@ impl<'a> Element for ElementRef<'a> {
             .map_or(false, |parent| parent.value().is_document())
     }
 }
+pub struct ShieldedElmRef<'a>(&'a ElementRef<'a>);
+
+impl<'a> ElementRef<'a>{
+    pub fn shielded(&self) -> ShieldedElmRef{
+        ShieldedElmRef(&self)
+    }
+}
+
+impl<'a> ShieldedElmRef<'a>{
+    fn has_class(&self, name: &LocalName, case_sensitive: bool) -> bool {
+        self.0.has_class(name, map_b_to_cs(case_sensitive))
+    }
+
+    fn has_id(&self, id: &LocalName, case_sensitive: bool) -> bool{
+        self.0.has_id(id, map_b_to_cs(case_sensitive))
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -148,6 +165,8 @@ mod tests {
     use crate::selector::Selector;
     use selectors::attr::CaseSensitivity;
     use selectors::Element;
+
+    use super::map_b_to_cs;
 
     #[test]
     fn test_has_id() {
@@ -162,7 +181,7 @@ mod tests {
             true,
             element.has_id(
                 &LocalName::from("link_id_456"),
-                true
+                map_b_to_cs(true)
             )
         );
 
@@ -173,7 +192,7 @@ mod tests {
             false,
             element.has_id(
                 &LocalName::from("any_link_id"),
-                true
+                map_b_to_cs(true)
             )
         );
     }
@@ -202,7 +221,7 @@ mod tests {
         let element = fragment.select(&sel).next().unwrap();
         assert_eq!(
             true,
-            element.has_class(&LocalName::from("my_class"), true)
+            element.has_class(&LocalName::from("my_class"), map_b_to_cs(true))
         );
 
         let html = "<p>hey there</p>";
@@ -211,7 +230,7 @@ mod tests {
         let element = fragment.select(&sel).next().unwrap();
         assert_eq!(
             false,
-            element.has_class(&LocalName::from("my_class"), true)
+            element.has_class(&LocalName::from("my_class"), map_b_to_cs(true))
         );
     }
 }
